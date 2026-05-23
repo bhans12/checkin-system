@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Komme-Gå System</title>
+
+  <!-- ============================================================
+       UDFYLD DISSE TO LINJER MED DINE SUPABASE OPLYSNINGER
+       Find dem på: https://supabase.com → dit projekt → Settings → API
+       ============================================================ -->
+  <script>
+    const SUPABASE_URL = 'https://xgwgewfciiacmcyxdnse.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_80PEljw3NP6jm-nVpL75eg_zq7AsUmx';
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green:       #4a7c20;
+      --green-light: #eaf3de;
+      --green-dark:  #27500a;
+      --red:         #c0392b;
+      --red-light:   #fdecea;
+      --gray-50:     #f8f8f6;
+      --gray-100:    #efefec;
+      --gray-300:    #d1d0ca;
+      --gray-500:    #888780;
+      --gray-700:    #444441;
+      --gray-900:    #1a1a18;
+      --white:       #ffffff;
+      --radius-sm:   8px;
+      --radius-md:   12px;
+      --radius-lg:   16px;
+      --shadow:      0 1px 3px rgba(0,0,0,0.08);
+    }
+
+    html, body {
+      height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: var(--gray-50);
+      color: var(--gray-900);
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    /* ---- HEADER ---- */
+    .header {
+      background: var(--white);
+      border-bottom: 1px solid var(--gray-300);
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .counter-block { display: flex; align-items: baseline; gap: 6px; }
+
+    .counter-num {
+      font-size: 52px;
+      font-weight: 600;
+      line-height: 1;
+      color: var(--gray-900);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .counter-label { font-size: 14px; color: var(--gray-500); }
+
+    .badges { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    .badge {
+      font-size: 13px;
+      font-weight: 500;
+      padding: 5px 12px;
+      border-radius: 99px;
+      white-space: nowrap;
+    }
+    .badge-in  { background: var(--green-light); color: var(--green-dark); }
+    .badge-out { background: var(--gray-100);    color: var(--gray-700); }
+
+    /* ---- TOOLBAR ---- */
+    .toolbar {
+      background: var(--white);
+      border-bottom: 1px solid var(--gray-300);
+      padding: 10px 16px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .filter-btn {
+      font-size: 14px;
+      padding: 7px 14px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--gray-300);
+      background: var(--white);
+      color: var(--gray-700);
+      cursor: pointer;
+      font-weight: 500;
+    }
+    .filter-btn.active {
+      background: var(--gray-900);
+      color: var(--white);
+      border-color: var(--gray-900);
+    }
+
+    .search {
+      flex: 1;
+      min-width: 160px;
+      font-size: 15px;
+      padding: 8px 12px;
+      border: 1px solid var(--gray-300);
+      border-radius: var(--radius-sm);
+      background: var(--gray-50);
+      color: var(--gray-900);
+      -webkit-appearance: none;
+    }
+    .search:focus { outline: 2px solid var(--gray-900); outline-offset: 1px; }
+
+    /* ---- LIST ---- */
+    .list {
+      padding: 12px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding-bottom: 90px;
+    }
+
+    .user-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 16px;
+      background: var(--white);
+      border: 1px solid var(--gray-300);
+      border-radius: var(--radius-lg);
+      cursor: pointer;
+      transition: transform 0.08s, background 0.1s;
+      min-height: 72px;
+      box-shadow: var(--shadow);
+    }
+    .user-row:active { transform: scale(0.98); background: var(--gray-50); }
+
+    .avatar {
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 600;
+      flex-shrink: 0;
+      letter-spacing: 0.5px;
+    }
+    .avatar-in  { background: var(--green-light); color: var(--green-dark); }
+    .avatar-out { background: var(--gray-100);    color: var(--gray-500); }
+
+    .user-info { flex: 1; min-width: 0; }
+    .user-name  { font-size: 16px; font-weight: 600; color: var(--gray-900); }
+    .user-time  { font-size: 12px; color: var(--gray-500); margin-top: 3px; }
+
+    .toggle-btn {
+      font-size: 14px;
+      font-weight: 600;
+      padding: 10px 18px;
+      border-radius: var(--radius-md);
+      border: none;
+      cursor: pointer;
+      flex-shrink: 0;
+      min-width: 80px;
+      text-align: center;
+      letter-spacing: 0.2px;
+    }
+    .btn-checkin  { background: var(--green); color: var(--white); }
+    .btn-checkout { background: var(--red);   color: var(--white); }
+    .toggle-btn:active { opacity: 0.85; }
+
+    /* ---- FOOTER ---- */
+    .footer {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: var(--white);
+      border-top: 1px solid var(--gray-300);
+      padding: 10px 16px;
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      align-items: center;
+    }
+
+    .footer-btn {
+      font-size: 13px;
+      padding: 8px 16px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--gray-300);
+      background: var(--white);
+      color: var(--gray-700);
+      cursor: pointer;
+      font-weight: 500;
+    }
+    .footer-btn:active { background: var(--gray-100); }
+
+    .sync-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      flex-shrink: 0;
+      margin-right: auto;
+    }
+    .sync-dot.offline { background: var(--red); }
+
+    .sync-label { font-size: 12px; color: var(--gray-500); margin-right: 8px; }
+
+    /* ---- EMPTY / ERROR ---- */
+    .empty {
+      text-align: center;
+      color: var(--gray-500);
+      font-size: 15px;
+      padding: 40px 20px;
+    }
+
+    .error-bar {
+      background: var(--red-light);
+      color: var(--red);
+      padding: 12px 20px;
+      font-size: 14px;
+      text-align: center;
+    }
+
+    /* ---- MODAL (tilføj bruger) ---- */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.4);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 100;
+      padding: 24px;
+    }
+    .modal-overlay.hidden { display: none; }
+
+    .modal {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      width: 100%; max-width: 380px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+    }
+    .modal h2 { font-size: 18px; font-weight: 600; margin-bottom: 16px; }
+    .modal input {
+      width: 100%;
+      font-size: 16px;
+      padding: 12px 14px;
+      border: 1px solid var(--gray-300);
+      border-radius: var(--radius-sm);
+      margin-bottom: 14px;
+      -webkit-appearance: none;
+      color: var(--gray-900);
+      background: var(--white);
+    }
+    .modal input:focus { outline: 2px solid var(--gray-900); outline-offset: 1px; }
+    .modal-btns { display: flex; gap: 8px; justify-content: flex-end; }
+    .modal-btns button {
+      font-size: 15px;
+      font-weight: 500;
+      padding: 10px 20px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--gray-300);
+      cursor: pointer;
+    }
+    .btn-primary { background: var(--gray-900); color: var(--white); border-color: var(--gray-900) !important; }
+    .btn-primary:active { opacity: 0.85; }
+
+    /* ---- LOADING ---- */
+    .loading {
+      display: flex; align-items: center; justify-content: center;
+      height: 200px;
+      color: var(--gray-500);
+      font-size: 15px;
+      gap: 10px;
+    }
+    .spinner {
+      width: 20px; height: 20px;
+      border: 2px solid var(--gray-300);
+      border-top-color: var(--gray-700);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="counter-block">
+    <span class="counter-num" id="count">0</span>
+    <span class="counter-label" id="count-label">/ 0 i huset</span>
+  </div>
+  <div class="badges">
+    <span class="badge badge-in"  id="badge-in">0 inde</span>
+    <span class="badge badge-out" id="badge-out">0 ude</span>
+  </div>
+</div>
+
+<div class="toolbar">
+  <button class="filter-btn active" id="f-all"     onclick="setFilter('all')">Alle</button>
+  <button class="filter-btn"        id="f-inside"  onclick="setFilter('inside')">Inde</button>
+  <button class="filter-btn"        id="f-outside" onclick="setFilter('outside')">Ude</button>
+  <input  class="search" type="search" placeholder="Søg navn…" oninput="setQuery(this.value)">
+</div>
+
+<div id="error-bar" class="error-bar" style="display:none"></div>
+
+<div class="list" id="list">
+  <div class="loading"><div class="spinner"></div> Henter data…</div>
+</div>
+
+<div class="footer">
+  <div class="sync-dot" id="sync-dot" title="Forbindelsesstatus"></div>
+  <span class="sync-label" id="sync-label">Forbinder…</span>
+  <button class="footer-btn" onclick="openModal()">+ Tilføj bruger</button>
+  <button class="footer-btn" onclick="resetAll()">↺ Nulstil alle</button>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay hidden" id="modal" onclick="closeModal(event)">
+  <div class="modal">
+    <h2>Tilføj bruger</h2>
+    <input id="modal-input" type="text" placeholder="Fuldt navn…"
+      onkeydown="if(event.key==='Enter') saveNewUser()">
+    <div class="modal-btns">
+      <button onclick="closeModal()">Annuller</button>
+      <button class="btn-primary" onclick="saveNewUser()">Tilføj</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const TABLE = 'checkin_users';
+let users = [];
+let filter = 'all';
+let query  = '';
+
+/* ---- INIT ---- */
+async function init() {
+  const { data, error } = await db.from(TABLE).select('*').order('name');
+  if (error) { showError('Kunne ikke hente data: ' + error.message); return; }
+  users = data || [];
+  render();
+
+  // Realtidsopdateringer
+  db.channel('checkin-realtime')
+    .on('postgres_changes', { event: '*', schema: 'public', table: TABLE }, handleChange)
+    .subscribe(status => {
+      const dot   = document.getElementById('sync-dot');
+      const label = document.getElementById('sync-label');
+      if (status === 'SUBSCRIBED') {
+        dot.classList.remove('offline');
+        label.textContent = 'Live ●';
+      } else {
+        dot.classList.add('offline');
+        label.textContent = 'Afbrudt';
+      }
+    });
+}
+
+function handleChange(payload) {
+  const { eventType, new: row, old } = payload;
+  if (eventType === 'INSERT') {
+    users.push(row);
+  } else if (eventType === 'UPDATE') {
+    const i = users.findIndex(u => u.id === row.id);
+    if (i !== -1) users[i] = row; else users.push(row);
+  } else if (eventType === 'DELETE') {
+    users = users.filter(u => u.id !== old.id);
+  }
+  users.sort((a, b) => a.name.localeCompare(b.name, 'da'));
+  render();
+}
+
+/* ---- TOGGLE ---- */
+async function toggle(id) {
+  const u = users.find(u => u.id === id);
+  if (!u) return;
+  const now = new Date();
+  const hm  = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+  const update = {
+    inside:      !u.inside,
+    last_action: u.inside ? 'Gik ud ' + hm : 'Tjekkede ind ' + hm,
+    updated_at:  new Date().toISOString()
+  };
+  // Optimistisk UI
+  Object.assign(u, update);
+  render();
+  const { error } = await db.from(TABLE).update(update).eq('id', id);
+  if (error) showError('Fejl ved opdatering: ' + error.message);
+}
+
+/* ---- RESET ---- */
+async function resetAll() {
+  if (!confirm('Nulstil alle brugere til "ude"?')) return;
+  const { error } = await db.from(TABLE).update({
+    inside: false, last_action: null, updated_at: new Date().toISOString()
+  }).neq('id', 0);
+  if (error) { showError('Fejl: ' + error.message); return; }
+  users.forEach(u => { u.inside = false; u.last_action = null; });
+  render();
+}
+
+/* ---- ADD USER ---- */
+function openModal() {
+  document.getElementById('modal').classList.remove('hidden');
+  setTimeout(() => document.getElementById('modal-input').focus(), 100);
+}
+function closeModal(e) {
+  if (!e || e.target === document.getElementById('modal')) {
+    document.getElementById('modal').classList.add('hidden');
+    document.getElementById('modal-input').value = '';
+  }
+}
+async function saveNewUser() {
+  const name = document.getElementById('modal-input').value.trim();
+  if (!name) return;
+  if (users.find(u => u.name === name)) { alert('Navn findes allerede.'); return; }
+  const { error } = await db.from(TABLE).insert({ name, inside: false, last_action: null });
+  if (error) { showError('Fejl: ' + error.message); return; }
+  closeModal();
+}
+
+/* ---- RENDER ---- */
+function initials(name) {
+  const p = name.trim().split(' ');
+  return (p[0][0] + (p[1] ? p[1][0] : '')).toUpperCase();
+}
+
+function render() {
+  const total  = users.length;
+  const inCnt  = users.filter(u => u.inside).length;
+
+  document.getElementById('count').textContent       = inCnt;
+  document.getElementById('count-label').textContent = '/ ' + total + ' i huset';
+  document.getElementById('badge-in').textContent    = inCnt + ' inde';
+  document.getElementById('badge-out').textContent   = (total - inCnt) + ' ude';
+
+  let visible = users.filter(u => {
+    if (filter === 'inside')  return u.inside;
+    if (filter === 'outside') return !u.inside;
+    return true;
+  }).filter(u => u.name.toLowerCase().includes(query.toLowerCase()));
+
+  const listEl = document.getElementById('list');
+  if (!visible.length) {
+    listEl.innerHTML = '<div class="empty">Ingen brugere matcher</div>';
+    return;
+  }
+
+  listEl.innerHTML = visible.map(u => `
+    <div class="user-row" onclick="toggle(${u.id})">
+      <div class="avatar ${u.inside ? 'avatar-in' : 'avatar-out'}">${initials(u.name)}</div>
+      <div class="user-info">
+        <div class="user-name">${u.name}</div>
+        <div class="user-time">${u.last_action || 'Ingen aktivitet'}</div>
+      </div>
+      <button class="toggle-btn ${u.inside ? 'btn-checkout' : 'btn-checkin'}"
+        onclick="event.stopPropagation(); toggle(${u.id})">
+        ${u.inside ? 'Ud' : 'Ind'}
+      </button>
+    </div>
+  `).join('');
+}
+
+function setFilter(f) {
+  filter = f;
+  ['all','inside','outside'].forEach(k => {
+    document.getElementById('f-' + k).classList.toggle('active', k === f);
+  });
+  render();
+}
+
+function setQuery(q) { query = q; render(); }
+
+function showError(msg) {
+  const el = document.getElementById('error-bar');
+  el.textContent = msg;
+  el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 5000);
+}
+
+init();
+</script>
+</body>
+</html>
