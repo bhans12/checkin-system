@@ -148,6 +148,7 @@
     </div>
     <button class="footer-btn" onclick="openModal()">+ Tilfoej</button>
     <button class="footer-btn" onclick="resetAll()">&#8635; Nulstil</button>
+    <button class="footer-btn" onclick="lockScreen()" style="color:var(--red);border-color:rgba(240,82,82,0.3);">&#128274; Las skarm</button>
   </div>
 </div>
 
@@ -242,7 +243,14 @@ function setFilter(f){filter=f;["all","inside","outside"].forEach(k=>document.ge
 function setQuery(q){query=q;render();}
 function showError(msg){const el=document.getElementById("error-bar");el.textContent=msg;el.style.display="block";setTimeout(()=>el.style.display="none",5000);}
 
-let pinEntry="";
+function lockScreen(){
+  sessionStorage.removeItem("pin-ok");
+  document.getElementById("main-app").style.display="none";
+  document.getElementById("pin-screen").classList.remove("hidden");
+  pinEntry="";updateDots();
+  document.getElementById("pin-error").textContent="";
+}
+
 function pinPress(d){if(pinEntry.length>=4)return;pinEntry+=d;updateDots();if(pinEntry.length===4)checkPin();}
 function pinDel(){pinEntry=pinEntry.slice(0,-1);updateDots();document.getElementById("pin-error").textContent="";}
 function updateDots(){for(let i=0;i<4;i++){const d=document.getElementById("d"+i);d.classList.toggle("filled",i<pinEntry.length);d.classList.remove("error");}}
