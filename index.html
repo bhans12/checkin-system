@@ -3,497 +3,265 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Komme-Gå System</title>
-
-  <!-- ============================================================
-       UDFYLD DISSE TO LINJER MED DINE SUPABASE OPLYSNINGER
-       Find dem på: https://supabase.com → dit projekt → Settings → API
-       ============================================================ -->
+  <title>Subra — Komme-Gaa</title>
   <script>
     const SUPABASE_URL = 'https://xgwgewfciiacmcyxdnse.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_80PEljw3NP6jm-nVpL75eg_zq7AsUmx';
+    const CORRECT_PIN  = '2847';
   </script>
-
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    :root {
-      --green:       #4a7c20;
-      --green-light: #eaf3de;
-      --green-dark:  #27500a;
-      --red:         #c0392b;
-      --red-light:   #fdecea;
-      --gray-50:     #f8f8f6;
-      --gray-100:    #efefec;
-      --gray-300:    #d1d0ca;
-      --gray-500:    #888780;
-      --gray-700:    #444441;
-      --gray-900:    #1a1a18;
-      --white:       #ffffff;
-      --radius-sm:   8px;
-      --radius-md:   12px;
-      --radius-lg:   16px;
-      --shadow:      0 1px 3px rgba(0,0,0,0.08);
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#0b0f1a;--surface:#141929;--border:rgba(255,255,255,0.08);--border-hi:rgba(255,255,255,0.16);
+      --blue:#3d8ef0;--blue-dim:rgba(61,142,240,0.15);--blue-glow:rgba(61,142,240,0.25);
+      --green:#22c77a;--green-dim:rgba(34,199,122,0.12);--red:#f05252;--red-dim:rgba(240,82,82,0.12);
+      --text:#f0f2f7;--muted:rgba(240,242,247,0.45);--faint:rgba(240,242,247,0.18);
     }
+    html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;color:var(--text);-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 
-    html, body {
-      height: 100%;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-      background: var(--gray-50);
-      color: var(--gray-900);
-      -webkit-tap-highlight-color: transparent;
-      touch-action: manipulation;
-    }
+    /* PIN */
+    #pin-screen{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:36px;padding:32px}
+    #pin-screen.hidden{display:none}
+    .pin-brand{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center}
+    .pin-brand-name{font-size:30px;font-weight:700;letter-spacing:4px;color:var(--text);text-transform:uppercase}
+    .pin-brand-line{width:40px;height:2px;background:var(--blue);border-radius:2px}
+    .pin-brand-sub{font-size:11px;color:var(--muted);letter-spacing:2px;text-transform:uppercase}
+    .pin-dots{display:flex;gap:16px}
+    .pin-dot{width:14px;height:14px;border-radius:50%;border:1.5px solid var(--border-hi);background:transparent;transition:background .15s,border-color .15s,box-shadow .15s}
+    .pin-dot.filled{background:var(--blue);border-color:var(--blue);box-shadow:0 0 10px var(--blue-glow)}
+    .pin-dot.error{background:var(--red);border-color:var(--red)}
+    .pin-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;width:100%;max-width:280px}
+    .pin-btn{aspect-ratio:1;border-radius:14px;border:1px solid var(--border);background:var(--surface);font-size:22px;font-weight:400;color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .1s,border-color .1s,transform .08s}
+    .pin-btn:active{background:var(--blue-dim);border-color:var(--blue);transform:scale(0.93)}
+    .pin-btn.del{font-size:18px;color:var(--muted)}
+    .pin-btn.empty{border:none;background:transparent;cursor:default}
+    .pin-btn.empty:active{transform:none;background:transparent}
+    .pin-error-msg{font-size:13px;color:var(--red);height:18px;letter-spacing:.5px}
 
-    /* ---- HEADER ---- */
-    .header {
-      background: var(--white);
-      border-bottom: 1px solid var(--gray-300);
-      padding: 16px 20px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      position: sticky;
-      top: 0;
-      z-index: 10;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-
-    .counter-block { display: flex; align-items: baseline; gap: 6px; }
-
-    .counter-num {
-      font-size: 52px;
-      font-weight: 600;
-      line-height: 1;
-      color: var(--gray-900);
-      font-variant-numeric: tabular-nums;
-    }
-
-    .counter-label { font-size: 14px; color: var(--gray-500); }
-
-    .badges { display: flex; gap: 8px; flex-wrap: wrap; }
-
-    .badge {
-      font-size: 13px;
-      font-weight: 500;
-      padding: 5px 12px;
-      border-radius: 99px;
-      white-space: nowrap;
-    }
-    .badge-in  { background: var(--green-light); color: var(--green-dark); }
-    .badge-out { background: var(--gray-100);    color: var(--gray-700); }
-
-    /* ---- TOOLBAR ---- */
-    .toolbar {
-      background: var(--white);
-      border-bottom: 1px solid var(--gray-300);
-      padding: 10px 16px;
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-
-    .filter-btn {
-      font-size: 14px;
-      padding: 7px 14px;
-      border-radius: var(--radius-sm);
-      border: 1px solid var(--gray-300);
-      background: var(--white);
-      color: var(--gray-700);
-      cursor: pointer;
-      font-weight: 500;
-    }
-    .filter-btn.active {
-      background: var(--gray-900);
-      color: var(--white);
-      border-color: var(--gray-900);
-    }
-
-    .search {
-      flex: 1;
-      min-width: 160px;
-      font-size: 15px;
-      padding: 8px 12px;
-      border: 1px solid var(--gray-300);
-      border-radius: var(--radius-sm);
-      background: var(--gray-50);
-      color: var(--gray-900);
-      -webkit-appearance: none;
-    }
-    .search:focus { outline: 2px solid var(--gray-900); outline-offset: 1px; }
-
-    /* ---- LIST ---- */
-    .list {
-      padding: 12px 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      padding-bottom: 90px;
-    }
-
-    .user-row {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      padding: 14px 16px;
-      background: var(--white);
-      border: 1px solid var(--gray-300);
-      border-radius: var(--radius-lg);
-      cursor: pointer;
-      transition: transform 0.08s, background 0.1s;
-      min-height: 72px;
-      box-shadow: var(--shadow);
-    }
-    .user-row:active { transform: scale(0.98); background: var(--gray-50); }
-
-    .avatar {
-      width: 44px; height: 44px;
-      border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 14px; font-weight: 600;
-      flex-shrink: 0;
-      letter-spacing: 0.5px;
-    }
-    .avatar-in  { background: var(--green-light); color: var(--green-dark); }
-    .avatar-out { background: var(--gray-100);    color: var(--gray-500); }
-
-    .user-info { flex: 1; min-width: 0; }
-    .user-name  { font-size: 16px; font-weight: 600; color: var(--gray-900); }
-    .user-time  { font-size: 12px; color: var(--gray-500); margin-top: 3px; }
-
-    .toggle-btn {
-      font-size: 14px;
-      font-weight: 600;
-      padding: 10px 18px;
-      border-radius: var(--radius-md);
-      border: none;
-      cursor: pointer;
-      flex-shrink: 0;
-      min-width: 80px;
-      text-align: center;
-      letter-spacing: 0.2px;
-    }
-    .btn-checkin  { background: var(--green); color: var(--white); }
-    .btn-checkout { background: var(--red);   color: var(--white); }
-    .toggle-btn:active { opacity: 0.85; }
-
-    /* ---- FOOTER ---- */
-    .footer {
-      position: fixed;
-      bottom: 0; left: 0; right: 0;
-      background: var(--white);
-      border-top: 1px solid var(--gray-300);
-      padding: 10px 16px;
-      display: flex;
-      gap: 8px;
-      justify-content: flex-end;
-      align-items: center;
-    }
-
-    .footer-btn {
-      font-size: 13px;
-      padding: 8px 16px;
-      border-radius: var(--radius-sm);
-      border: 1px solid var(--gray-300);
-      background: var(--white);
-      color: var(--gray-700);
-      cursor: pointer;
-      font-weight: 500;
-    }
-    .footer-btn:active { background: var(--gray-100); }
-
-    .sync-dot {
-      width: 8px; height: 8px;
-      border-radius: 50%;
-      background: var(--green);
-      flex-shrink: 0;
-      margin-right: auto;
-    }
-    .sync-dot.offline { background: var(--red); }
-
-    .sync-label { font-size: 12px; color: var(--gray-500); margin-right: 8px; }
-
-    /* ---- EMPTY / ERROR ---- */
-    .empty {
-      text-align: center;
-      color: var(--gray-500);
-      font-size: 15px;
-      padding: 40px 20px;
-    }
-
-    .error-bar {
-      background: var(--red-light);
-      color: var(--red);
-      padding: 12px 20px;
-      font-size: 14px;
-      text-align: center;
-    }
-
-    /* ---- MODAL (tilføj bruger) ---- */
-    .modal-overlay {
-      position: fixed; inset: 0;
-      background: rgba(0,0,0,0.4);
-      display: flex; align-items: center; justify-content: center;
-      z-index: 100;
-      padding: 24px;
-    }
-    .modal-overlay.hidden { display: none; }
-
-    .modal {
-      background: var(--white);
-      border-radius: var(--radius-lg);
-      padding: 24px;
-      width: 100%; max-width: 380px;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.15);
-    }
-    .modal h2 { font-size: 18px; font-weight: 600; margin-bottom: 16px; }
-    .modal input {
-      width: 100%;
-      font-size: 16px;
-      padding: 12px 14px;
-      border: 1px solid var(--gray-300);
-      border-radius: var(--radius-sm);
-      margin-bottom: 14px;
-      -webkit-appearance: none;
-      color: var(--gray-900);
-      background: var(--white);
-    }
-    .modal input:focus { outline: 2px solid var(--gray-900); outline-offset: 1px; }
-    .modal-btns { display: flex; gap: 8px; justify-content: flex-end; }
-    .modal-btns button {
-      font-size: 15px;
-      font-weight: 500;
-      padding: 10px 20px;
-      border-radius: var(--radius-sm);
-      border: 1px solid var(--gray-300);
-      cursor: pointer;
-    }
-    .btn-primary { background: var(--gray-900); color: var(--white); border-color: var(--gray-900) !important; }
-    .btn-primary:active { opacity: 0.85; }
-
-    /* ---- LOADING ---- */
-    .loading {
-      display: flex; align-items: center; justify-content: center;
-      height: 200px;
-      color: var(--gray-500);
-      font-size: 15px;
-      gap: 10px;
-    }
-    .spinner {
-      width: 20px; height: 20px;
-      border: 2px solid var(--gray-300);
-      border-top-color: var(--gray-700);
-      border-radius: 50%;
-      animation: spin 0.7s linear infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
+    /* APP */
+    #main-app{display:none}
+    .header{background:var(--surface);border-bottom:1px solid var(--border);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10;gap:12px;flex-wrap:wrap}
+    .brand-mark{font-size:12px;font-weight:700;letter-spacing:3px;color:var(--blue);text-transform:uppercase;margin-bottom:4px}
+    .counter-block{display:flex;align-items:baseline;gap:6px}
+    .counter-num{font-size:48px;font-weight:300;line-height:1;color:var(--text);font-variant-numeric:tabular-nums;letter-spacing:-1px}
+    .counter-label{font-size:13px;color:var(--muted)}
+    .badges{display:flex;gap:8px;flex-wrap:wrap}
+    .badge{font-size:12px;font-weight:500;padding:5px 12px;border-radius:99px;border:1px solid;white-space:nowrap;letter-spacing:.3px}
+    .badge-in{background:var(--green-dim);color:var(--green);border-color:rgba(34,199,122,.25)}
+    .badge-out{background:transparent;color:var(--muted);border-color:var(--border)}
+    .toolbar{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 16px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .filter-btn{font-size:13px;padding:6px 14px;border-radius:99px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-weight:500;letter-spacing:.3px;transition:all .15s}
+    .filter-btn.active{background:var(--blue-dim);color:var(--blue);border-color:rgba(61,142,240,.35)}
+    .search{flex:1;min-width:150px;font-size:15px;padding:8px 12px;border:1px solid var(--border);border-radius:10px;background:rgba(255,255,255,.04);color:var(--text);-webkit-appearance:none}
+    .search::placeholder{color:var(--faint)}
+    .search:focus{outline:none;border-color:rgba(61,142,240,.4)}
+    .list{padding:12px 14px;display:flex;flex-direction:column;gap:8px;padding-bottom:80px}
+    .user-row{display:flex;align-items:center;gap:14px;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:14px;cursor:pointer;min-height:70px;transition:border-color .15s,transform .08s}
+    .user-row:active{transform:scale(0.985);background:rgba(255,255,255,.03)}
+    .user-row.is-inside{border-color:rgba(34,199,122,.2)}
+    .avatar{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex-shrink:0;letter-spacing:.5px}
+    .avatar-in{background:var(--green-dim);color:var(--green);border:1px solid rgba(34,199,122,.25)}
+    .avatar-out{background:rgba(255,255,255,.04);color:var(--muted);border:1px solid var(--border)}
+    .user-info{flex:1;min-width:0}
+    .user-name{font-size:15px;font-weight:500;color:var(--text)}
+    .user-time{font-size:12px;color:var(--muted);margin-top:3px;letter-spacing:.2px}
+    .toggle-btn{font-size:11px;font-weight:700;padding:9px 18px;border-radius:10px;border:none;cursor:pointer;flex-shrink:0;min-width:72px;text-align:center;letter-spacing:1px;text-transform:uppercase;transition:opacity .1s,transform .08s}
+    .toggle-btn:active{opacity:.8;transform:scale(0.96)}
+    .btn-checkin{background:var(--green);color:#0b1a12}
+    .btn-checkout{background:var(--red-dim);color:var(--red);border:1px solid rgba(240,82,82,.3)}
+    .footer{position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);padding:10px 16px;display:flex;gap:8px;justify-content:flex-end;align-items:center}
+    .footer-btn{font-size:12px;padding:7px 14px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;letter-spacing:.3px;transition:border-color .15s,color .15s}
+    .footer-btn:active{color:var(--text);border-color:var(--border-hi)}
+    .sync-indicator{margin-right:auto;display:flex;align-items:center;gap:7px}
+    .sync-dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green)}
+    .sync-dot.offline{background:var(--red);box-shadow:0 0 8px var(--red)}
+    .sync-label{font-size:11px;color:var(--muted);letter-spacing:.5px}
+    .empty{text-align:center;color:var(--faint);font-size:14px;padding:48px 20px}
+    .error-bar{background:var(--red-dim);color:var(--red);padding:12px 20px;font-size:13px;text-align:center}
+    .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;align-items:center;justify-content:center;padding:24px}
+    .modal-box{background:var(--surface);border:1px solid var(--border-hi);border-radius:18px;padding:28px;width:100%;max-width:360px}
+    .modal-title{font-size:16px;font-weight:600;margin-bottom:18px;letter-spacing:.5px}
+    .modal-input{width:100%;font-size:16px;padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:rgba(255,255,255,.05);color:var(--text);margin-bottom:16px}
+    .modal-btns{display:flex;gap:10px;justify-content:flex-end}
+    .modal-cancel{font-size:14px;padding:9px 18px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer}
+    .modal-save{font-size:14px;padding:9px 18px;border-radius:8px;border:none;background:var(--blue);color:#fff;font-weight:600;cursor:pointer}
   </style>
 </head>
 <body>
 
-<div class="header">
-  <div class="counter-block">
-    <span class="counter-num" id="count">0</span>
-    <span class="counter-label" id="count-label">/ 0 i huset</span>
+<div id="pin-screen">
+  <div class="pin-brand">
+    <div class="pin-brand-name">Subra</div>
+    <div class="pin-brand-line"></div>
+    <div class="pin-brand-sub">Adgangskode kraevet</div>
   </div>
-  <div class="badges">
-    <span class="badge badge-in"  id="badge-in">0 inde</span>
-    <span class="badge badge-out" id="badge-out">0 ude</span>
+  <div class="pin-dots">
+    <div class="pin-dot" id="d0"></div>
+    <div class="pin-dot" id="d1"></div>
+    <div class="pin-dot" id="d2"></div>
+    <div class="pin-dot" id="d3"></div>
+  </div>
+  <div class="pin-grid">
+    <button class="pin-btn" onclick="pinPress('1')">1</button>
+    <button class="pin-btn" onclick="pinPress('2')">2</button>
+    <button class="pin-btn" onclick="pinPress('3')">3</button>
+    <button class="pin-btn" onclick="pinPress('4')">4</button>
+    <button class="pin-btn" onclick="pinPress('5')">5</button>
+    <button class="pin-btn" onclick="pinPress('6')">6</button>
+    <button class="pin-btn" onclick="pinPress('7')">7</button>
+    <button class="pin-btn" onclick="pinPress('8')">8</button>
+    <button class="pin-btn" onclick="pinPress('9')">9</button>
+    <button class="pin-btn empty" disabled></button>
+    <button class="pin-btn" onclick="pinPress('0')">0</button>
+    <button class="pin-btn del" onclick="pinDel()">&#9003;</button>
+  </div>
+  <div class="pin-error-msg" id="pin-error"></div>
+</div>
+
+<div id="main-app">
+  <div class="header">
+    <div>
+      <div class="brand-mark">Subra</div>
+      <div class="counter-block">
+        <span class="counter-num" id="count">0</span>
+        <span class="counter-label" id="count-label">/ 0 i huset</span>
+      </div>
+    </div>
+    <div class="badges">
+      <span class="badge badge-in" id="badge-in">0 inde</span>
+      <span class="badge badge-out" id="badge-out">0 ude</span>
+    </div>
+  </div>
+  <div class="toolbar">
+    <button class="filter-btn active" id="f-all" onclick="setFilter('all')">Alle</button>
+    <button class="filter-btn" id="f-inside" onclick="setFilter('inside')">Inde</button>
+    <button class="filter-btn" id="f-outside" onclick="setFilter('outside')">Ude</button>
+    <input class="search" type="search" placeholder="Soeg navn..." oninput="setQuery(this.value)">
+  </div>
+  <div id="error-bar" class="error-bar" style="display:none"></div>
+  <div class="list" id="list"><div class="empty">Henter data...</div></div>
+  <div class="footer">
+    <div class="sync-indicator">
+      <div class="sync-dot" id="sync-dot"></div>
+      <span class="sync-label" id="sync-label">FORBINDER</span>
+    </div>
+    <button class="footer-btn" onclick="openModal()">+ Tilfoej</button>
+    <button class="footer-btn" onclick="resetAll()">&#8635; Nulstil</button>
   </div>
 </div>
 
-<div class="toolbar">
-  <button class="filter-btn active" id="f-all"     onclick="setFilter('all')">Alle</button>
-  <button class="filter-btn"        id="f-inside"  onclick="setFilter('inside')">Inde</button>
-  <button class="filter-btn"        id="f-outside" onclick="setFilter('outside')">Ude</button>
-  <input  class="search" type="search" placeholder="Søg navn…" oninput="setQuery(this.value)">
-</div>
-
-<div id="error-bar" class="error-bar" style="display:none"></div>
-
-<div class="list" id="list">
-  <div class="loading"><div class="spinner"></div> Henter data…</div>
-</div>
-
-<div class="footer">
-  <div class="sync-dot" id="sync-dot" title="Forbindelsesstatus"></div>
-  <span class="sync-label" id="sync-label">Forbinder…</span>
-  <button class="footer-btn" onclick="openModal()">+ Tilføj bruger</button>
-  <button class="footer-btn" onclick="resetAll()">↺ Nulstil alle</button>
-</div>
-
-<!-- Modal -->
-<div class="modal-overlay hidden" id="modal" onclick="closeModal(event)">
-  <div class="modal">
-    <h2>Tilføj bruger</h2>
-    <input id="modal-input" type="text" placeholder="Fuldt navn…"
-      onkeydown="if(event.key==='Enter') saveNewUser()">
+<div class="modal-bg" id="modal-bg" onclick="if(event.target===this)closeModal()">
+  <div class="modal-box">
+    <div class="modal-title">Tilfoej bruger</div>
+    <input class="modal-input" id="modal-input" type="text" placeholder="Fuldt navn..."
+      onkeydown="if(event.key==='Enter')saveNewUser()">
     <div class="modal-btns">
-      <button onclick="closeModal()">Annuller</button>
-      <button class="btn-primary" onclick="saveNewUser()">Tilføj</button>
+      <button class="modal-cancel" onclick="closeModal()">Annuller</button>
+      <button class="modal-save" onclick="saveNewUser()">Tilfoej</button>
     </div>
   </div>
 </div>
 
 <script>
-const { createClient } = supabase;
-const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+const{createClient}=supabase;
+const db=createClient(SUPABASE_URL,SUPABASE_KEY);
+const TABLE="checkin_users";
+let users=[],filter="all",query="";
 
-const TABLE = 'checkin_users';
-let users = [];
-let filter = 'all';
-let query  = '';
-
-/* ---- INIT ---- */
-async function init() {
-  const { data, error } = await db.from(TABLE).select('*').order('name');
-  if (error) { showError('Kunne ikke hente data: ' + error.message); return; }
-  users = data || [];
-  render();
-
-  // Realtidsopdateringer
-  db.channel('checkin-realtime')
-    .on('postgres_changes', { event: '*', schema: 'public', table: TABLE }, handleChange)
-    .subscribe(status => {
-      const dot   = document.getElementById('sync-dot');
-      const label = document.getElementById('sync-label');
-      if (status === 'SUBSCRIBED') {
-        dot.classList.remove('offline');
-        label.textContent = 'Live ●';
-      } else {
-        dot.classList.add('offline');
-        label.textContent = 'Afbrudt';
-      }
+async function init(){
+  const{data,error}=await db.from(TABLE).select("*").order("name");
+  if(error){showError("Kunne ikke hente data: "+error.message);return;}
+  users=data||[];render();
+  db.channel("cr").on("postgres_changes",{event:"*",schema:"public",table:TABLE},handleChange)
+    .subscribe(s=>{
+      const dot=document.getElementById("sync-dot"),lbl=document.getElementById("sync-label");
+      if(s==="SUBSCRIBED"){dot.classList.remove("offline");lbl.textContent="LIVE";}
+      else{dot.classList.add("offline");lbl.textContent="OFFLINE";}
     });
 }
 
-function handleChange(payload) {
-  const { eventType, new: row, old } = payload;
-  if (eventType === 'INSERT') {
-    users.push(row);
-  } else if (eventType === 'UPDATE') {
-    const i = users.findIndex(u => u.id === row.id);
-    if (i !== -1) users[i] = row; else users.push(row);
-  } else if (eventType === 'DELETE') {
-    users = users.filter(u => u.id !== old.id);
-  }
-  users.sort((a, b) => a.name.localeCompare(b.name, 'da'));
-  render();
+function handleChange({eventType,new:row,old}){
+  if(eventType==="INSERT")users.push(row);
+  else if(eventType==="UPDATE"){const i=users.findIndex(u=>u.id===row.id);if(i!==-1)users[i]=row;else users.push(row);}
+  else if(eventType==="DELETE")users=users.filter(u=>u.id!==old.id);
+  users.sort((a,b)=>a.name.localeCompare(b.name,"da"));render();
 }
 
-/* ---- TOGGLE ---- */
-async function toggle(id) {
-  const u = users.find(u => u.id === id);
-  if (!u) return;
-  const now = new Date();
-  const hm  = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
-  const update = {
-    inside:      !u.inside,
-    last_action: u.inside ? 'Gik ud ' + hm : 'Tjekkede ind ' + hm,
-    updated_at:  new Date().toISOString()
-  };
-  // Optimistisk UI
-  Object.assign(u, update);
-  render();
-  const { error } = await db.from(TABLE).update(update).eq('id', id);
-  if (error) showError('Fejl ved opdatering: ' + error.message);
+async function toggle(id){
+  const u=users.find(u=>u.id===id);if(!u)return;
+  const hm=new Date().toLocaleTimeString("da-DK",{hour:"2-digit",minute:"2-digit"});
+  const upd={inside:!u.inside,last_action:u.inside?"Gik ud "+hm:"Tjekkede ind "+hm,updated_at:new Date().toISOString()};
+  Object.assign(u,upd);render();
+  const{error}=await db.from(TABLE).update(upd).eq("id",id);
+  if(error)showError("Fejl: "+error.message);
 }
 
-/* ---- RESET ---- */
-async function resetAll() {
-  if (!confirm('Nulstil alle brugere til "ude"?')) return;
-  const { error } = await db.from(TABLE).update({
-    inside: false, last_action: null, updated_at: new Date().toISOString()
-  }).neq('id', 0);
-  if (error) { showError('Fejl: ' + error.message); return; }
-  users.forEach(u => { u.inside = false; u.last_action = null; });
-  render();
+async function resetAll(){
+  if(!confirm("Nulstil alle til ude?"))return;
+  await db.from(TABLE).update({inside:false,last_action:null,updated_at:new Date().toISOString()}).neq("id",0);
+  users.forEach(u=>{u.inside=false;u.last_action=null;});render();
 }
 
-/* ---- ADD USER ---- */
-function openModal() {
-  document.getElementById('modal').classList.remove('hidden');
-  setTimeout(() => document.getElementById('modal-input').focus(), 100);
-}
-function closeModal(e) {
-  if (!e || e.target === document.getElementById('modal')) {
-    document.getElementById('modal').classList.add('hidden');
-    document.getElementById('modal-input').value = '';
-  }
-}
-async function saveNewUser() {
-  const name = document.getElementById('modal-input').value.trim();
-  if (!name) return;
-  if (users.find(u => u.name === name)) { alert('Navn findes allerede.'); return; }
-  const { error } = await db.from(TABLE).insert({ name, inside: false, last_action: null });
-  if (error) { showError('Fejl: ' + error.message); return; }
-  closeModal();
+function openModal(){document.getElementById("modal-bg").style.display="flex";setTimeout(()=>document.getElementById("modal-input").focus(),100);}
+function closeModal(){document.getElementById("modal-bg").style.display="none";document.getElementById("modal-input").value="";}
+async function saveNewUser(){
+  const name=document.getElementById("modal-input").value.trim();
+  if(!name||users.find(u=>u.name===name))return;
+  await db.from(TABLE).insert({name,inside:false,last_action:null});closeModal();
 }
 
-/* ---- RENDER ---- */
-function initials(name) {
-  const p = name.trim().split(' ');
-  return (p[0][0] + (p[1] ? p[1][0] : '')).toUpperCase();
-}
+function initials(n){const p=n.trim().split(" ");return(p[0][0]+(p[1]?p[1][0]:"")).toUpperCase();}
 
-function render() {
-  const total  = users.length;
-  const inCnt  = users.filter(u => u.inside).length;
-
-  document.getElementById('count').textContent       = inCnt;
-  document.getElementById('count-label').textContent = '/ ' + total + ' i huset';
-  document.getElementById('badge-in').textContent    = inCnt + ' inde';
-  document.getElementById('badge-out').textContent   = (total - inCnt) + ' ude';
-
-  let visible = users.filter(u => {
-    if (filter === 'inside')  return u.inside;
-    if (filter === 'outside') return !u.inside;
-    return true;
-  }).filter(u => u.name.toLowerCase().includes(query.toLowerCase()));
-
-  const listEl = document.getElementById('list');
-  if (!visible.length) {
-    listEl.innerHTML = '<div class="empty">Ingen brugere matcher</div>';
-    return;
-  }
-
-  listEl.innerHTML = visible.map(u => `
-    <div class="user-row" onclick="toggle(${u.id})">
-      <div class="avatar ${u.inside ? 'avatar-in' : 'avatar-out'}">${initials(u.name)}</div>
+function render(){
+  const total=users.length,inCnt=users.filter(u=>u.inside).length;
+  document.getElementById("count").textContent=inCnt;
+  document.getElementById("count-label").textContent="/ "+total+" i huset";
+  document.getElementById("badge-in").textContent=inCnt+" inde";
+  document.getElementById("badge-out").textContent=(total-inCnt)+" ude";
+  const visible=users
+    .filter(u=>filter==="all"?true:filter==="inside"?u.inside:!u.inside)
+    .filter(u=>u.name.toLowerCase().includes(query.toLowerCase()));
+  const listEl=document.getElementById("list");
+  if(!visible.length){listEl.innerHTML="<div class=\"empty\">Ingen brugere matcher</div>";return;}
+  listEl.innerHTML=visible.map(u=>`
+    <div class="user-row ${u.inside?"is-inside":""}" onclick="toggle(${u.id})">
+      <div class="avatar ${u.inside?"avatar-in":"avatar-out"}">${initials(u.name)}</div>
       <div class="user-info">
         <div class="user-name">${u.name}</div>
-        <div class="user-time">${u.last_action || 'Ingen aktivitet'}</div>
+        <div class="user-time">${u.last_action||"Ingen aktivitet"}</div>
       </div>
-      <button class="toggle-btn ${u.inside ? 'btn-checkout' : 'btn-checkin'}"
-        onclick="event.stopPropagation(); toggle(${u.id})">
-        ${u.inside ? 'Ud' : 'Ind'}
+      <button class="toggle-btn ${u.inside?"btn-checkout":"btn-checkin"}"
+        onclick="event.stopPropagation();toggle(${u.id})">
+        ${u.inside?"UD":"IND"}
       </button>
-    </div>
-  `).join('');
+    </div>`).join("");
 }
 
-function setFilter(f) {
-  filter = f;
-  ['all','inside','outside'].forEach(k => {
-    document.getElementById('f-' + k).classList.toggle('active', k === f);
-  });
-  render();
+function setFilter(f){filter=f;["all","inside","outside"].forEach(k=>document.getElementById("f-"+k).classList.toggle("active",k===f));render();}
+function setQuery(q){query=q;render();}
+function showError(msg){const el=document.getElementById("error-bar");el.textContent=msg;el.style.display="block";setTimeout(()=>el.style.display="none",5000);}
+
+let pinEntry="";
+function pinPress(d){if(pinEntry.length>=4)return;pinEntry+=d;updateDots();if(pinEntry.length===4)checkPin();}
+function pinDel(){pinEntry=pinEntry.slice(0,-1);updateDots();document.getElementById("pin-error").textContent="";}
+function updateDots(){for(let i=0;i<4;i++){const d=document.getElementById("d"+i);d.classList.toggle("filled",i<pinEntry.length);d.classList.remove("error");}}
+function checkPin(){
+  if(pinEntry===CORRECT_PIN){
+    document.getElementById("pin-screen").classList.add("hidden");
+    document.getElementById("main-app").style.display="block";
+    sessionStorage.setItem("pin-ok","1");init();
+  }else{
+    for(let i=0;i<4;i++)document.getElementById("d"+i).classList.add("error");
+    document.getElementById("pin-error").textContent="Forkert PIN - proev igen";
+    setTimeout(()=>{pinEntry="";updateDots();document.getElementById("pin-error").textContent="";},1000);
+  }
 }
-
-function setQuery(q) { query = q; render(); }
-
-function showError(msg) {
-  const el = document.getElementById('error-bar');
-  el.textContent = msg;
-  el.style.display = 'block';
-  setTimeout(() => el.style.display = 'none', 5000);
+if(sessionStorage.getItem("pin-ok")==="1"){
+  document.getElementById("pin-screen").classList.add("hidden");
+  document.getElementById("main-app").style.display="block";
+  init();
 }
-
-init();
 </script>
 </body>
 </html>
