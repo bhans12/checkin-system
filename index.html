@@ -102,19 +102,19 @@
     <div class="pin-dot" id="d2"></div>
     <div class="pin-dot" id="d3"></div>
   </div>
-  <div class="pin-grid">
-    <button class="pin-btn" onclick="pinPress('1')">1</button>
-    <button class="pin-btn" onclick="pinPress('2')">2</button>
-    <button class="pin-btn" onclick="pinPress('3')">3</button>
-    <button class="pin-btn" onclick="pinPress('4')">4</button>
-    <button class="pin-btn" onclick="pinPress('5')">5</button>
-    <button class="pin-btn" onclick="pinPress('6')">6</button>
-    <button class="pin-btn" onclick="pinPress('7')">7</button>
-    <button class="pin-btn" onclick="pinPress('8')">8</button>
-    <button class="pin-btn" onclick="pinPress('9')">9</button>
+  <div class="pin-grid" id="pin-grid">
+    <button class="pin-btn" data-digit="1">1</button>
+    <button class="pin-btn" data-digit="2">2</button>
+    <button class="pin-btn" data-digit="3">3</button>
+    <button class="pin-btn" data-digit="4">4</button>
+    <button class="pin-btn" data-digit="5">5</button>
+    <button class="pin-btn" data-digit="6">6</button>
+    <button class="pin-btn" data-digit="7">7</button>
+    <button class="pin-btn" data-digit="8">8</button>
+    <button class="pin-btn" data-digit="9">9</button>
     <button class="pin-btn empty" disabled></button>
-    <button class="pin-btn" onclick="pinPress('0')">0</button>
-    <button class="pin-btn del" onclick="pinDel()">&#9003;</button>
+    <button class="pin-btn" data-digit="0">0</button>
+    <button class="pin-btn del" data-digit="del">&#9003;</button>
   </div>
   <div class="pin-error-msg" id="pin-error"></div>
 </div>
@@ -192,10 +192,11 @@ function handleChange({eventType,new:row,old}){
 async function toggle(id){
   const u=users.find(u=>u.id===id);if(!u)return;
   const hm=new Date().toLocaleTimeString("da-DK",{hour:"2-digit",minute:"2-digit"});
-  const upd={inside:!u.inside,last_action:u.inside?"Gik ud "+hm:"Tjekkede ind "+hm,updated_at:new Date().toISOString()};
+  const newInside=!u.inside;
+  const upd={inside:newInside,last_action:newInside?"Tjekkede ind "+hm:"Gik ud "+hm,updated_at:new Date().toISOString()};
   Object.assign(u,upd);render();
-  const{error}=await db.from(TABLE).update(upd).eq("id",id);
-  if(error)showError("Fejl: "+error.message);
+  await db.from(TABLE).update(upd).eq("id",id);
+  await db.from("checkin_log").insert({user_name:u.name,action:newInside?"ind":"ud"});
 }
 
 async function resetAll(){
@@ -251,6 +252,7 @@ function lockScreen(){
   document.getElementById("pin-error").textContent="";
 }
 
+let pinEntry="";
 function pinPress(d){if(pinEntry.length>=4)return;pinEntry+=d;updateDots();if(pinEntry.length===4)checkPin();}
 function pinDel(){pinEntry=pinEntry.slice(0,-1);updateDots();document.getElementById("pin-error").textContent="";}
 function updateDots(){for(let i=0;i<4;i++){const d=document.getElementById("d"+i);d.classList.toggle("filled",i<pinEntry.length);d.classList.remove("error");}}
@@ -265,6 +267,19 @@ function checkPin(){
     setTimeout(()=>{pinEntry="";updateDots();document.getElementById("pin-error").textContent="";},1000);
   }
 }
+function setupPinButtons(){
+  document.querySelectorAll("#pin-grid .pin-btn").forEach(btn=>{
+    function handler(e){
+      e.preventDefault();
+      const digit=btn.getAttribute("data-digit");
+      if(digit==="del")pinDel();
+      else if(digit)pinPress(digit);
+    }
+    btn.addEventListener("touchend",handler,{passive:false});
+    btn.addEventListener("click",handler);
+  });
+}
+setupPinButtons();
 if(sessionStorage.getItem("pin-ok")==="1"){
   document.getElementById("pin-screen").classList.add("hidden");
   document.getElementById("main-app").style.display="block";

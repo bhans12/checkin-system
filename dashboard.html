@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Subra &mdash; Dashboard</title>
+  <script>
+    const SUPABASE_URL = 'https://xgwgewfciiacmcyxdnse.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_80PEljw3NP6jm-nVpL75eg_zq7AsUmx';
+    const CORRECT_PIN  = '2847';
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#0b0f1a;--surface:#141929;--border:rgba(255,255,255,0.08);--border-hi:rgba(255,255,255,0.16);
+      --blue:#3d8ef0;--blue-dim:rgba(61,142,240,0.12);
+      --green:#22c77a;--green-dim:rgba(34,199,122,0.12);
+      --red:#f05252;--red-dim:rgba(240,82,82,0.10);
+      --amber:#f0a23d;--amber-dim:rgba(240,162,61,0.12);
+      --text:#f0f2f7;--muted:rgba(240,242,247,0.45);--faint:rgba(240,242,247,0.15);
+    }
+    #pin-screen{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:36px;padding:32px}
+    #pin-screen.hidden{display:none}
+    .pin-brand{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center}
+    .pin-brand-name{font-size:30px;font-weight:700;letter-spacing:4px;color:var(--text);text-transform:uppercase}
+    .pin-brand-line{width:40px;height:2px;background:var(--blue);border-radius:2px}
+    .pin-brand-sub{font-size:11px;color:var(--muted);letter-spacing:2px;text-transform:uppercase}
+    .pin-dots{display:flex;gap:16px}
+    .pin-dot{width:14px;height:14px;border-radius:50%;border:1.5px solid var(--border-hi);background:transparent;transition:background .15s,border-color .15s,box-shadow .15s}
+    .pin-dot.filled{background:var(--blue);border-color:var(--blue);box-shadow:0 0 10px var(--blue-glow)}
+    .pin-dot.error{background:var(--red);border-color:var(--red)}
+    .pin-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;width:100%;max-width:280px}
+    .pin-btn{aspect-ratio:1;border-radius:14px;border:1px solid var(--border);background:var(--surface);font-size:22px;font-weight:400;color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .1s,border-color .1s,transform .08s}
+    .pin-btn:active{background:var(--blue-dim);border-color:var(--blue);transform:scale(0.93)}
+    .pin-btn.del{font-size:18px;color:var(--muted)}
+    .pin-btn.empty{border:none;background:transparent;cursor:default}
+    .pin-btn.empty:active{transform:none;background:transparent}
+    .pin-error-msg{font-size:13px;color:var(--red);height:18px;letter-spacing:.5px}
+    #main-content{display:none}
+    
+
+    .header{background:var(--surface);border-bottom:1px solid var(--border);padding:16px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;position:sticky;top:0;z-index:10}
+    .brand-mark{font-size:12px;font-weight:700;letter-spacing:3px;color:var(--blue);text-transform:uppercase;margin-bottom:3px}
+    .page-title{font-size:20px;font-weight:300;color:var(--text);letter-spacing:0.5px}
+    .back-btn{font-size:12px;padding:7px 14px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;letter-spacing:0.5px;text-decoration:none;display:inline-block;transition:color .15s,border-color .15s}
+    .back-btn:hover{color:var(--text);border-color:var(--border-hi)}
+
+    .controls{padding:16px 24px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;border-bottom:1px solid var(--border);background:var(--surface)}
+    .date-input{font-size:14px;padding:8px 12px;border:1px solid var(--border);border-radius:10px;background:rgba(255,255,255,0.04);color:var(--text);cursor:pointer}
+    .date-input:focus{outline:none;border-color:rgba(61,142,240,0.4)}
+    .filter-btn{font-size:13px;padding:6px 14px;border-radius:99px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-weight:500;transition:all .15s}
+    .filter-btn.active{background:var(--blue-dim);color:var(--blue);border-color:rgba(61,142,240,0.35)}
+    .refresh-btn{font-size:12px;padding:7px 14px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;margin-left:auto}
+    .refresh-btn:active{color:var(--text)}
+
+    .stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;padding:20px 24px}
+    .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 18px}
+    .stat-label{font-size:11px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px}
+    .stat-num{font-size:32px;font-weight:300;line-height:1;font-variant-numeric:tabular-nums}
+    .stat-sub{font-size:12px;color:var(--muted);margin-top:4px}
+    .num-blue{color:var(--blue)}
+    .num-green{color:var(--green)}
+    .num-red{color:var(--red)}
+
+    .section{padding:0 24px 24px}
+    .section-title{font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:12px;padding-top:4px}
+
+    .log-table{width:100%;border-collapse:collapse}
+    .log-table th{font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);padding:8px 14px;text-align:left;border-bottom:1px solid var(--border)}
+    .log-table td{padding:12px 14px;font-size:14px;border-bottom:1px solid var(--border);vertical-align:middle}
+    .log-table tr:last-child td{border-bottom:none}
+    .log-table tr:hover td{background:rgba(255,255,255,0.02)}
+
+    .avatar-sm{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0;letter-spacing:.5px}
+    .av-in{background:var(--green-dim);color:var(--green);border:1px solid rgba(34,199,122,.2)}
+    .av-out{background:var(--red-dim);color:var(--red);border:1px solid rgba(240,82,82,.2)}
+
+    .action-pill{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:4px 10px;border-radius:99px;letter-spacing:0.5px;text-transform:uppercase}
+    .pill-in{background:var(--green-dim);color:var(--green);border:1px solid rgba(34,199,122,.2)}
+    .pill-out{background:var(--red-dim);color:var(--red);border:1px solid rgba(240,82,82,.2)}
+
+    .time-col{font-family:monospace;font-size:13px;color:var(--muted)}
+
+    .empty-state{text-align:center;padding:60px 20px;color:var(--faint);font-size:14px}
+
+    .person-row{display:flex;align-items:center;gap:10px}
+    .person-name{font-size:14px;font-weight:500}
+
+    .currently-in{display:flex;flex-wrap:wrap;gap:8px;padding:0 24px 24px}
+    .in-chip{background:var(--green-dim);border:1px solid rgba(34,199,122,.2);color:var(--green);font-size:13px;padding:6px 14px;border-radius:99px;font-weight:500}
+  </style>
+</head>
+<body>
+
+<div id="pin-screen">
+  <div class="pin-brand">
+    <div class="pin-brand-name">Subra</div>
+    <div class="pin-brand-line"></div>
+    <div class="pin-brand-sub">Dashboard &mdash; adgangskode kraevet</div>
+  </div>
+  <div class="pin-dots">
+    <div class="pin-dot" id="d0"></div>
+    <div class="pin-dot" id="d1"></div>
+    <div class="pin-dot" id="d2"></div>
+    <div class="pin-dot" id="d3"></div>
+  </div>
+  <div class="pin-grid" id="pin-grid">
+    <button class="pin-btn" data-digit="1">1</button>
+    <button class="pin-btn" data-digit="2">2</button>
+    <button class="pin-btn" data-digit="3">3</button>
+    <button class="pin-btn" data-digit="4">4</button>
+    <button class="pin-btn" data-digit="5">5</button>
+    <button class="pin-btn" data-digit="6">6</button>
+    <button class="pin-btn" data-digit="7">7</button>
+    <button class="pin-btn" data-digit="8">8</button>
+    <button class="pin-btn" data-digit="9">9</button>
+    <button class="pin-btn empty" disabled></button>
+    <button class="pin-btn" data-digit="0">0</button>
+    <button class="pin-btn del" data-digit="del">&#9003;</button>
+  </div>
+  <div class="pin-error-msg" id="pin-error"></div>
+</div>
+
+<div id="main-content">
+<div class="header">
+  <div>
+    <div class="brand-mark">Subra</div>
+    <div class="page-title">Aktivitetsoversigt</div>
+  </div>
+  <a href="index.html" class="back-btn">&larr; Tilbage til systemet</a>
+</div>
+
+<div class="controls">
+  <input class="date-input" type="date" id="date-picker" onchange="load()">
+  <button class="filter-btn active" id="f-all"  onclick="setFilter('all')">Alle</button>
+  <button class="filter-btn" id="f-ind"  onclick="setFilter('ind')">Kun ind</button>
+  <button class="filter-btn" id="f-ud"   onclick="setFilter('ud')">Kun ud</button>
+  <button class="refresh-btn" onclick="load()">&#8635; Opdater</button>
+</div>
+
+<div class="stats-row">
+  <div class="stat-card">
+    <div class="stat-label">Haendelser i dag</div>
+    <div class="stat-num num-blue" id="stat-total">0</div>
+    <div class="stat-sub">ind + ud registreringer</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Unikke personer</div>
+    <div class="stat-num num-green" id="stat-unique">0</div>
+    <div class="stat-sub">har vaeret i bygningen</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Inde nu</div>
+    <div class="stat-num" id="stat-inside">0</div>
+    <div class="stat-sub" id="stat-inside-sub">personer</div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">Inde nu</div>
+  <div class="currently-in" id="currently-in"><span style="color:var(--faint);font-size:13px;">Henter...</span></div>
+</div>
+
+<div class="section">
+  <div class="section-title" id="log-title">Aktivitetslog</div>
+  <div style="overflow-x:auto">
+    <table class="log-table">
+      <thead>
+        <tr>
+          <th style="width:44px"></th>
+          <th>Navn</th>
+          <th>Handling</th>
+          <th>Tidspunkt</th>
+        </tr>
+      </thead>
+      <tbody id="log-body">
+        <tr><td colspan="4" class="empty-state">Henter data...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+const{createClient}=supabase;
+const db=createClient(SUPABASE_URL,SUPABASE_KEY);
+let logs=[], currentFilter='all', insideUsers=[];
+
+function todayStr(){return new Date().toISOString().slice(0,10);}
+
+function initDate(){
+  const dp=document.getElementById('date-picker');
+  dp.value=todayStr(); dp.max=todayStr();
+}
+
+function initials(n){const p=n.trim().split(' ');return(p[0][0]+(p[1]?p[1][0]:'')).toUpperCase();}
+
+function fmt(ts){
+  const d=new Date(ts);
+  return d.toLocaleTimeString('da-DK',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+
+async function load(){
+  const date=document.getElementById('date-picker').value;
+  const from=date+'T00:00:00';
+  const to  =date+'T23:59:59';
+
+  const[logRes,usersRes]=await Promise.all([
+    db.from('checkin_log').select('*').gte('logged_at',from).lte('logged_at',to).order('logged_at',{ascending:false}),
+    db.from('checkin_users').select('name,inside').order('name')
+  ]);
+
+  logs=logRes.data||[];
+  insideUsers=(usersRes.data||[]).filter(u=>u.inside).map(u=>u.name);
+  renderStats(); renderCurrently(); renderLog();
+}
+
+function renderStats(){
+  const total=logs.length;
+  const unique=new Set(logs.map(l=>l.user_name)).size;
+  document.getElementById('stat-total').textContent=total;
+  document.getElementById('stat-unique').textContent=unique;
+  document.getElementById('stat-inside').textContent=insideUsers.length;
+}
+
+function renderCurrently(){
+  const el=document.getElementById('currently-in');
+  if(!insideUsers.length){el.innerHTML='<span style="color:var(--faint);font-size:13px;">Ingen inde i bygningen</span>';return;}
+  el.innerHTML=insideUsers.map(n=>`<span class="in-chip">${n}</span>`).join('');
+}
+
+function renderLog(){
+  const date=document.getElementById('date-picker').value;
+  const isToday=date===todayStr();
+  document.getElementById('log-title').textContent=isToday?'Dagens aktivitet':'Aktivitet '+date;
+
+  let visible=logs;
+  if(currentFilter==='ind')visible=logs.filter(l=>l.action==='ind');
+  else if(currentFilter==='ud')visible=logs.filter(l=>l.action==='ud');
+
+  const tbody=document.getElementById('log-body');
+  if(!visible.length){tbody.innerHTML='<tr><td colspan="4" class="empty-state">Ingen aktivitet denne dag</td></tr>';return;}
+
+  tbody.innerHTML=visible.map(l=>`
+    <tr>
+      <td>
+        <div class="avatar-sm ${l.action==='ind'?'av-in':'av-out'}">${initials(l.user_name)}</div>
+      </td>
+      <td><div class="person-name">${l.user_name}</div></td>
+      <td><span class="action-pill ${l.action==='ind'?'pill-in':'pill-out'}">${l.action==='ind'?'&#8594; Ind':'&#8592; Ud'}</span></td>
+      <td class="time-col">${fmt(l.logged_at)}</td>
+    </tr>`).join('');
+}
+
+function setFilter(f){
+  currentFilter=f;
+  ['all','ind','ud'].forEach(k=>document.getElementById('f-'+k).classList.toggle('active',k===f));
+  renderLog();
+}
+
+let pinEntry='';
+function pinPress(d){if(pinEntry.length>=4)return;pinEntry+=d;updateDots();if(pinEntry.length===4)checkPin();}
+function pinDel(){pinEntry=pinEntry.slice(0,-1);updateDots();document.getElementById('pin-error').textContent='';}
+function updateDots(){for(let i=0;i<4;i++){const d=document.getElementById('d'+i);d.classList.toggle('filled',i<pinEntry.length);d.classList.remove('error');}}
+function checkPin(){
+  if(pinEntry===CORRECT_PIN){
+    document.getElementById('pin-screen').classList.add('hidden');
+    document.getElementById('main-content').style.display='block';
+    sessionStorage.setItem('dash-pin-ok','1');
+    initDate();load();setInterval(load,60000);
+  }else{
+    for(let i=0;i<4;i++)document.getElementById('d'+i).classList.add('error');
+    document.getElementById('pin-error').textContent='Forkert PIN - proev igen';
+    setTimeout(()=>{pinEntry='';updateDots();document.getElementById('pin-error').textContent='';},1000);
+  }
+}
+function setupPinButtons(){
+  document.querySelectorAll('#pin-grid .pin-btn').forEach(btn=>{
+    function handler(e){
+      e.preventDefault();
+      const digit=btn.getAttribute('data-digit');
+      if(digit==='del')pinDel();
+      else if(digit)pinPress(digit);
+    }
+    btn.addEventListener('touchend',handler,{passive:false});
+    btn.addEventListener('click',handler);
+  });
+}
+setupPinButtons();
+if(sessionStorage.getItem('dash-pin-ok')==='1'){
+  document.getElementById('pin-screen').classList.add('hidden');
+  document.getElementById('main-content').style.display='block';
+  initDate();load();setInterval(load,60000);
+}
+</script>
+</div>
+</body>
+</html>
